@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>AniCo – Testovací rozhraní Sprint 1</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 20px; background: #f8fafc; color: #1e293b; }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+    .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+    h2 { margin-top: 0; font-size: 1.25rem; color: #2563eb; }
+    label { display: block; font-weight: 600; margin-top: 10px; font-size: 0.9rem; }
+    input, select { width: 100%; padding: 8px 12px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+    button { background: #2563eb; color: white; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 15px; }
+    button:hover { background: #1d4ed8; }
+    pre { background: #0f172a; color: #38bdf8; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+  <h1>🐾 AniCo – Prototyp Sprint 1</h1>
+  <p>Přehledné testovací rozhraní ověřující kompletní tok: <strong>Chovatel &rarr; Zvíře &rarr; Doklady</strong></p>
+
+  <!-- 1. SEKCE: CHOVATEL -->
+  <div class="card">
+    <h2>1. Chovatel (US-01: Ověření a role)</h2>
+    <p>Aktuální ID chovatele v paměti: <code id="currentUserId">Zatím nezaregistrován</code></p>
+    
+    <button onclick="registerBreederAction()">1. Zaregistrovat testovacího chovatele</button>
+    <button onclick="verifyBreederAction()" style="background: #16a34a; margin-left: 8px;">2. Schválit chovatele (Eva)</button>
+    
+    <div id="breederResult" style="margin-top: 12px;"></div>
+  </div>
+
+  <!-- 2. SEKCE: ZVÍŘE -->
+  <div class="card">
+    <h2>2. Zvíře (US-02: Přidat profil zvířete)</h2>
+    <form id="animalForm" onsubmit="handleCreateAnimal(event)">
+      <label>Jméno zvířete:</label>
+      <input type="text" id="animalName" value="Rex" required>
+
+      <label>Druh:</label>
+      <select id="animalSpecies">
+        <option value="DOG">Pes (DOG)</option>
+        <option value="CAT">Kočka (CAT)</option>
+      </select>
+
+      <label>Plemeno:</label>
+      <input type="text" id="animalBreed" value="Německý ovčák" required>
+
+      <label>Pohlaví:</label>
+      <select id="animalGender">
+        <option value="MALE">Samec (MALE)</option>
+        <option value="FEMALE">Samice (FEMALE)</option>
+      </select>
+
+      <label>Datum narození:</label>
+      <input type="date" id="animalBirthDate" value="2022-05-15" required>
+
+      <button type="submit">Vytvořit zvíře přes API</button>
+    </form>
+    <div id="animalResult" style="margin-top: 12px;"></div>
+  </div>
+
+  <!-- 3. SEKCE: DOKLADY KE ZVÍŘETI -->
+  <div class="card">
+    <h2>3. Doklady ke zvířeti (US-03: Nahrát rodokmen / certifikát)</h2>
+    <form id="documentForm" onsubmit="handleUploadDocument(event)">
+      <label>ID zvířete (automaticky se předvyplní po vytvoření výše):</label>
+      <input type="text" id="docAnimalId" placeholder="ID zvířete z MongoDB" required>
+
+      <label>Typ dokladu:</label>
+      <select id="docType">
+        <option value="PEDIGREE">Průkaz původu (PEDIGREE)</option>
+        <option value="VET_REPORT">Veterinární zpráva (VET_REPORT)</option>
+        <option value="BREEDING_LICENSE">Chovná licence (BREEDING_LICENSE)</option>
+      </select>
+
+      <label>Vyberte soubor (PDF, JPG, PNG):</label>
+      <input type="file" id="docFile" accept=".pdf,image/png,image/jpeg" required>
+
+      <button type="submit">Nahrát soubor přes Multer API</button>
+    </form>
+    <div id="documentResult" style="margin-top: 12px;"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+    let activeBreederId = null;
+
+    // 1a. Registrace chovatele
+    async function registerBreederAction() {
+      const resDiv = document.getElementById('breederResult');
+      resDiv.innerHTML = 'Registruji chovatele přes POST /api/breeders/register...';
+
+      // Náhodný email pro možnost opakovaného klikání bez chyby 409 Conflict
+      const randomSuffix = Math.floor(Math.random() * 1000);
+      const payload = {
+        name: 'Karel Novák',
+        email: `karel.novak${randomSuffix}@chovatele.cz`,
+        kennelName: 'Z Vlčí rokle'
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/breeders/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        resDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+        if (data.user && data.user._id) {
+          activeBreederId = data.user._id;
+          document.getElementById('currentUserId').innerText = activeBreederId;
+        }
+      } catch (err) {
+        resDiv.innerHTML = `<span style="color:red">Chyba spojení: ${err.message}</span>`;
+      }
+    }
+
+    // 1b. Schválení administrátorkou Evou
+    async function verifyBreederAction() {
+      const resDiv = document.getElementById('breederResult');
+      if (!activeBreederId) {
+        resDiv.innerHTML = '<span style="color:red">Nejprve klikni na tlačítko 1 a zaregistruj chovatele!</span>';
+        return;
+      }
+
+      resDiv.innerHTML = `Schvaluji chovatele (${activeBreederId}) přes PATCH /api/breeders/:id/verify...`;
+
+      try {
+        const res = await fetch(`${API_BASE}/breeders/${activeBreederId}/verify`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'APPROVED' })
+        });
+        const data = await res.json();
+        resDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch (err) {
+        resDiv.innerHTML = `<span style="color:red">Chyba spojení: ${err.message}</span>`;
+      }
+    }
+
+    // 2. Vytvoření profilu zvířete
+    async function handleCreateAnimal(e) {
+      e.preventDefault();
+      const resDiv = document.getElementById('animalResult');
+      resDiv.innerHTML = 'Ukládám zvíře přes POST /api/animals...';
+
+      const payload = {
+        name: document.getElementById('animalName').value,
+        species: document.getElementById('animalSpecies').value,
+        breed: document.getElementById('animalBreed').value,
+        gender: document.getElementById('animalGender').value,
+        birthDate: new Date(document.getElementById('animalBirthDate').value).toISOString()
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/animals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        resDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+        if (data.animal && data.animal._id) {
+          document.getElementById('docAnimalId').value = data.animal._id;
+        }
+      } catch (err) {
+        resDiv.innerHTML = `<span style="color:red">Chyba: ${err.message}</span>`;
+      }
+    }
+
+    // 3. Nahrání dokladu
+    async function handleUploadDocument(e) {
+      e.preventDefault();
+      const resDiv = document.getElementById('documentResult');
+      resDiv.innerHTML = 'Nahrávám soubor přes POST /api/documents...';
+
+      const fileInput = document.getElementById('docFile');
+      const formData = new FormData();
+      formData.append('animalId', document.getElementById('docAnimalId').value);
+      formData.append('documentType', document.getElementById('docType').value);
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const res = await fetch(`${API_BASE}/documents`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const responseText = await res.text();
+        try {
+          const data = JSON.parse(responseText);
+          resDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch {
+          resDiv.innerHTML = `<span style="color:red">Chyba serveru (${res.status}):</span><pre>${responseText}</pre>`;
+        }
+      } catch (err) {
+        resDiv.innerHTML = `<span style="color:red">Chyba: ${err.message}</span>`;
+      }
+    }
+  </script>
+</body>
+</html>
