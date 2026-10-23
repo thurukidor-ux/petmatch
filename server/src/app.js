@@ -7,15 +7,20 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { OAuth2Client } from 'google-auth-library';
 
 import documentRoutes from './routes/documentRoutes.js';
 import animalRoutes from './routes/animalRoutes.js';
 import breederRoutes from './routes/breederRoutes.js'; 
 
+import authRoutes from './routes/authRoutes.js';
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 app.use(cors());
 app.use(express.json());
@@ -24,12 +29,13 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Zpřístupnění statických souborů frontendu ze složky 'public'
+
 app.use(express.static(path.join(__dirname, '../public')));
 
-// 2. Zpřístupnění nahraných souborů, aby šly otevřít v prohlížeči
+
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+app.use('/api/auth', authRoutes);
 
 app.use('/api/documents', documentRoutes);
 app.use('/api/animals', animalRoutes);

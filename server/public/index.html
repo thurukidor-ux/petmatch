@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>AniCo - Test Google Login</title>
+  
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <h2>AniCo - Přihlášení přes Google</h2>
+
+  
+  <div id="g_id_onload"
+       data-client_id="424057989582-tf0t5lqf14ov3tlitabs80v44hj1g8vk.apps.googleusercontent.com"
+       data-callback="handleCredentialResponse">
+  </div>
+  <div class="g_id_signin" data-type="standard"></div>
+
+  <div id="status" style="margin-top: 20px;"></div>
+
+  <script>
+    
+    async function handleCredentialResponse(response) {
+      console.log("Získán Google ID Token:", response.credential);
+
+      
+      const res = await fetch('http://localhost:3000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+
+      const data = await res.json();
+      console.log("Odpověď našeho backendu:", data);
+
+      if (data.token) {
+        
+        localStorage.setItem('token', data.token);
+        document.getElementById('status').innerHTML = `
+          <p style="color: green;"><b>Přihlášen jako:</b> ${data.user.name} (${data.user.email})</p>
+          <p><b>Role:</b> ${data.user.role}</p>
+          <p><b>JWT Token uložen!</b></p>
+        `;
+      }
+    }
+
+    
+    async function vytvoritZvireSTokenem() {
+      const token = localStorage.getItem('token');
+      
+      const res = await fetch('http://localhost:3000/api/animals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: "Blesk",
+          species: "DOG",
+          breed: "Border Kolie",
+          gender: "MALE",
+          birthDate: "2024-01-01"
+        })
+      });
+      const result = await res.json();
+      console.log("Výsledek:", result);
+    }
+  </script>
+</body>
+</html>
